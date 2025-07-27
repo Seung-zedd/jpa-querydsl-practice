@@ -1,8 +1,9 @@
 package study.querydsl;
 
+import com.querydsl.core.QueryResults;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
-import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,12 +11,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.entity.Member;
-import study.querydsl.entity.QMember;
 import study.querydsl.entity.Team;
+
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.*;
+import static study.querydsl.entity.QMember.*;
 
 @SpringBootTest
 @Transactional
@@ -23,10 +26,12 @@ public class QueryDslBasicTest {
 
     @Autowired
     EntityManager em;
+    JPAQueryFactory queryFactory;
 
     @BeforeEach
     public void before() {
         // given
+        queryFactory = new JPAQueryFactory(em);
         Team teamA = new Team("teamA");
         Team teamB = new Team("teamB");
 
@@ -60,20 +65,153 @@ public class QueryDslBasicTest {
     @Test
     @DisplayName("querydsl 테스트")
     void startQuerydsl() {
-        // given
-        JPAQueryFactory queryFactory = new JPAQueryFactory(em);
-        QMember m = QMember.member;
+        // given: on-demand static으로 하면 코드가 깔끔해짐
+
 
         // when
-        Member findMember = queryFactory.select(m)
-                .from(m)
+        Member findMember = queryFactory.select(member)
+                .from(member)
                 // eq로 파라미터 바인딩을 대신 해줌
                 //* sql injection 공격 방어도 가능
-                .where(m.username.eq("member1"))
+                .where(member.username.eq("member1"))
                 .fetchOne();
 
         // then
+        assertNotNull(findMember);
         assertThat(findMember.getUsername()).isEqualTo("member1");
+    }
+
+    @Test
+    @DisplayName("inputYourTestName")
+    void search() {
+        // given
+
+        // when
+        Member findMember = queryFactory
+                .selectFrom(member)
+                .where(member.username.eq("member1").and(member.age.eq(10)))
+                .fetchOne();
+
+        // then
+        assertNotNull(findMember);
+        assertThat(findMember.getUsername()).isEqualTo("member1");
+
+    }
+
+    @Test
+    @DisplayName("AND 테스트")
+    void searchAndParam() {
+        // given
+
+        // when
+        //* where문 안의 and는 콤마로 대체하는게 가장 베스트
+        Member findMember = queryFactory
+                .selectFrom(member)
+                .where(member.username.eq("member1"),
+                        (member.age.eq(10)))
+                .fetchOne();
+
+        // then
+        assertNotNull(findMember);
+        assertThat(findMember.getUsername()).isEqualTo("member1");
+
+    }
+
+    @Test
+    @DisplayName("inputYourTestName")
+    void resultFetch() {
+        // given
+
+        // when
+        /*List<Member> fetch = queryFactory
+                .selectFrom(member)
+                .fetch();
+
+        Member fetchOne = queryFactory
+                .selectFrom(member)
+                .fetchOne();
+
+        Member fetchFirst = queryFactory
+                .selectFrom(member)
+                .fetchFirst();*/
+
+        //! fetchResults()는 dialect에 따라 count 쿼리가 생성되지 않을 수도 있기 때문에 fetch()를 대신 사용할 것!
+        // especially those involving multiple GROUP BY clauses or HAVING clauses, where a proper count query cannot be reliably generated through standard JPA/JPQL mechanisms.
+        QueryResults<Member> results = queryFactory
+                .selectFrom(member)
+                .fetchResults();
+
+        results.getTotal();
+        List<Member> content = results.getResults();
+
+
+        // then
+
+    }
+
+    /**
+     * 회원 정렬 순서
+     * 1. 회원 나이 내림차순
+     * 2. 회원 이름 올림차순
+     * 단, 2에서 회원 이름이 없으면 마지막에 출력(nulls last)
+     */
+    @Test
+    @DisplayName("inputYourTestName")
+    void sort() {
+        // given
+        em.persist(new Member(null, 100));
+        em.persist(new Member("member5", 100));
+        em.persist(new Member("member6", 100));
+
+        // when
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .where(member.age.eq(100))
+                .orderBy(member.age.desc(), member.username.asc().nullsLast())
+                .fetch();
+
+        Member member5 = result.getFirst();
+        Member member6 = result.get(1);
+        Member memberNull = result.getLast();
+
+        // then
+        assertThat(member5.getUsername()).isEqualTo("member5");
+        assertThat(member6.getUsername()).isEqualTo("member6");
+        assertThat(memberNull.getUsername()).isNull();
+    }
+
+    @Test
+    @DisplayName("페이징 테스트")
+    void paging1() {
+        //! contents 쿼리와 count 쿼리는 "명시적으로" 분리해서 사용해야 한다.
+
+        // 콘텐츠 조회 쿼리 (페이징 적용)
+        List<Member> contents = queryFactory
+                .selectFrom(member)
+                .orderBy(member.username.desc())
+                .offset(1)
+                .limit(2)
+                .fetch();
+
+        // then
+        assertThat(contents.size()).isEqualTo(2);
+
+    }
+
+    @Test
+    @DisplayName("count 쿼리 테스트")
+    void count() {
+        // given
+
+        // 전체 카운트 조회 쿼리 (페이징 미적용)
+        //! 집계함수에는 selectFrom()을 사용할 수 없음!
+        Long total = queryFactory
+                .select(member.count())
+                .from(member)
+                .fetchOne();
+
+        // then
+        assertThat(total).isEqualTo(4);
 
     }
 
