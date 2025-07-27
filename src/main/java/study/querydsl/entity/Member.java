@@ -17,7 +17,8 @@ public class Member {
     private String username;
     private int age;
 
-    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "team_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id")
     private Team team;
 
     public Member(String username) {
