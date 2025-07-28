@@ -267,4 +267,55 @@ public class QueryDslBasicTest {
         assertThat(teamB.get(member.age.avg())).isEqualTo(35);
     }
 
+    /**
+     * 팀 A에 소속된 모든 회원 조회
+     */
+    @Test
+    @DisplayName("join 테스트")
+    void join() {
+        // given
+
+        // when
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .join(member.team, team)
+                .where(team.name.eq("teamA"))
+                .fetch();
+
+        // then
+        assertThat(result)
+                // 검증하고 싶은 값을 뽑아냄
+                .extracting("username")
+                // 그 값들이 예상과 정확히 일치하는지 "순서"까지 확인
+                .containsExactly("member1", "member2");
+    }
+
+    /**
+     * 세타 조인
+     * 회원의 이름이 팀 이름과 같은 회원 조회
+     */
+    @Test
+    @DisplayName("세타 조인 테스트")
+    void theta_join() {
+        // given
+        em.persist(new Member("teamA"));
+        em.persist(new Member("teamB"));
+
+        // when
+        List<Member> result = queryFactory
+                .select(member)
+                // FROM 절에 두 테이블을 나열하여 세타 조인을 수행했는데, 마침 WHERE 절의 조건이 '=' 연산자로 필터링하는 동일 조인으로 변환된 것
+                //! Cross join은 카티션 프로덕트(ㆍ)라고 불리며, 특정 조건없이 모든 row의 조합 결과를 조회
+                //? 아래의 FROM절은 SELECT * FROM member m CROSS JOIN team t WHERE m.username = t.name;과 동일한 작업을 수행
+                .from(member, team)
+                .where(member.username.eq(team.name))
+                .fetch();
+
+        // then
+        assertThat(result)
+                .extracting("username")
+                .containsExactly("teamA", "teamB");
+
+    }
+
 }
