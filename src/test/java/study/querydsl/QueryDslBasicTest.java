@@ -318,4 +318,56 @@ public class QueryDslBasicTest {
 
     }
 
+    /**
+     * 회원과 팀을 조인하면서, 팀 이름이 teamA인 팀만 조인, 회원은 모두 조회
+     * JPQL: select m, t from Member m left join m.team t on t.name = 'teamA'
+     */
+    @Test
+    @DisplayName("연관관계가 있는 join..on 테스트")
+    void join_on_filtering() {
+        // given
+
+        // when
+        //* 외부(left, right, outer) 조인은 join...on절로, 그냥 내부(inner) 조인이면 where절을 쓰자.
+        List<Tuple> result = queryFactory
+                .select(member, team)
+                .from(member) // 주 테이블
+                // target: 주 테이블과 어떤 관계를 통해 연결된 필드인지 지정
+                // alias: where절 또는 on절에서 편하게 사용하기 위해 지정
+                .leftJoin(member.team, team)
+                .on(team.name.eq("teamA"))
+                .fetch();
+
+        // then
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+        }
+    }
+
+    /**
+     * 회원의 이름이 팀 이름과 같은 대상 외부 조인
+     */
+    @Test
+    @DisplayName("연관관계가 없는 엔티티 조인 테스트")
+    void join_on_no_relation() {
+        // given
+        em.persist(new Member("teamA"));
+        em.persist(new Member("teamB"));
+        em.persist(new Member("teamC"));
+
+        // when
+        List<Tuple> result = queryFactory
+                .select(member, team)
+                .from(member)
+                .leftJoin(team)
+                .on(member.username.eq(team.name))
+                .fetch();
+
+        // then
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+        }
+
+    }
+
 }
