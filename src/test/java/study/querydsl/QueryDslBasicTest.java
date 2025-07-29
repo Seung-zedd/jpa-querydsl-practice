@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.dto.MemberDto;
+import study.querydsl.dto.QMemberDto;
 import study.querydsl.dto.UserDto;
 import study.querydsl.entity.Member;
 import study.querydsl.entity.QMember;
@@ -764,6 +765,7 @@ public class QueryDslBasicTest {
 
     @Test
     @DisplayName("생성자로 UserDto 조회")
+    //! Projects.constructor는 런타임 시에 에러를 발견함!
     void findUserDtoByConstructor() {
 
         // when
@@ -777,6 +779,18 @@ public class QueryDslBasicTest {
         // then
         for (UserDto userDto : result) {
             System.out.println("userDto = " + userDto);
+        }
+    }
+
+    @Test
+    void findDtoByQueryProjection() {
+        List<MemberDto> result = queryFactory
+                .select(new QMemberDto(member.username, member.age))
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
         }
     }
 
