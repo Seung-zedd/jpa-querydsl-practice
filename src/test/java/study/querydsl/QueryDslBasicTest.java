@@ -604,7 +604,7 @@ public class QueryDslBasicTest {
 
     @Test
     @DisplayName("상수, 문자 더하기 테스트")
-    void test() {
+    void concatWithString() {
         // given
 
         // when
@@ -617,6 +617,41 @@ public class QueryDslBasicTest {
         // then
         for (String s : result) {
             System.out.println("s = " + s);
+        }
+    }
+
+    @Test
+    @DisplayName("inputYourTestName")
+    void simpleProjection() {
+        // given
+
+        // when
+        List<String> result = queryFactory
+                .select(member.username)
+                .from(member)
+                .fetch();
+
+
+        // then
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+
+    //! tuple은 querydsl에 종속적인 객체이기 때문에 repository 계층에서만 사용하고, 서비스 계층 이상에서는 Dto로 변환해서 사용할 것!
+    @Test
+    void tupleProjection() {
+        // when
+        //? 튜플은 리스트라고 생각하면 됨
+        List<Tuple> result = queryFactory
+                .select(member.username, member.age)
+                .from(member)
+                .fetch();
+
+        for (Tuple tuple : result) {
+            String username = tuple.get(member.username);
+            Integer age = tuple.get(member.age);
+            log.info("username: {}, age: {}", username, age);
         }
     }
 
