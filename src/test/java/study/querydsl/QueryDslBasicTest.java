@@ -2,10 +2,13 @@ package study.querydsl;
 
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.PersistenceUnit;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,6 +30,7 @@ import static study.querydsl.entity.QTeam.team;
 
 @SpringBootTest
 @Transactional
+@Slf4j
 public class QueryDslBasicTest {
 
     @Autowired
@@ -507,6 +511,76 @@ public class QueryDslBasicTest {
         // then
         for (Tuple tuple : result) {
             System.out.println("tuple = " + tuple);
+        }
+    }
+
+    //! DB에서는 웬만해서는 case문을 사용하지 말 것!
+    @Test
+    @DisplayName("케이스 테스트")
+    void basicCase() {
+        // given
+
+        // when
+        List<String> result = queryFactory
+                .select(member.age
+                        .when(10).then("열살")
+                        .when(20).then("스무살")
+                        .otherwise("기타")
+                )
+                .from(member)
+                .fetch();
+
+        // then
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+
+    }
+
+    @Test
+    @DisplayName("inputYourTestName")
+    void complexCase() {
+        // given
+
+        // when
+        List<String> result = queryFactory
+                .select(new CaseBuilder()
+                        .when(member.age.between(0, 20)).then("0~20살")
+                        .when(member.age.between(21, 30)).then("21~30살")
+                        .otherwise("기타")
+
+                )
+                .from(member)
+                .fetch();
+
+        // then
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+
+    @Test
+    @DisplayName("orderby case 테스트")
+    void orderByCase() {
+        // given
+        NumberExpression<Integer> rankPath = new CaseBuilder()
+                .when(member.age.between(0, 20)).then(2)
+                .when(member.age.between(21, 30)).then(3)
+                .otherwise(1);
+
+        // when
+        List<Tuple> result = queryFactory
+                .select(member.username, member.age, rankPath)
+                .from(member)
+                .orderBy(rankPath.asc())
+                .fetch();
+
+        // then
+        for (Tuple tuple : result) {
+            String username = tuple.get(member.username);
+            Integer age = tuple.get(member.age);
+            Integer rank = tuple.get(rankPath);
+            log.info("username: {}, age: {}, rank: {}", username, age, rank);
         }
     }
 
