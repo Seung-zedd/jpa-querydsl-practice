@@ -2,9 +2,12 @@ package study.querydsl;
 
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.ExpressionUtils;
+import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -16,6 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
+import study.querydsl.dto.MemberDto;
+import study.querydsl.dto.UserDto;
 import study.querydsl.entity.Member;
 import study.querydsl.entity.QMember;
 import study.querydsl.entity.Team;
@@ -652,6 +657,126 @@ public class QueryDslBasicTest {
             String username = tuple.get(member.username);
             Integer age = tuple.get(member.age);
             log.info("username: {}, age: {}", username, age);
+        }
+    }
+
+    @Test
+    @DisplayName("inputYourTestName")
+    void findDtoByJPQL() {
+        // given
+
+        // when
+        List<MemberDto> result = em.createQuery("select new study.querydsl.dto.MemberDto(m.username, m.age) from Member m", MemberDto.class)
+                .getResultList();
+
+        // then
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
+        }
+    }
+
+    @Test
+    @DisplayName("Setter로 Dto 조회")
+    void findDtoBySetter() {
+        // given
+
+        // when
+        //! Dto로 setter를 설정할 때 QueryDSL의 Projections 팩토리가 리플렉션 기술을 사용하기 때문에 Dto에 기본 생성자를 만들어야 한다.
+        List<MemberDto> result = queryFactory
+                .select(Projections.bean(MemberDto.class,
+                        member.username,
+                        member.age))
+                .from(member)
+                .fetch();
+
+        // then
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
+        }
+    }
+
+    @Test
+    @DisplayName("Setter로 Dto 조회")
+    void findDtoByField() {
+        // given
+
+        // when
+        List<MemberDto> result = queryFactory
+                .select(Projections.fields(MemberDto.class,
+                        member.username,
+                        member.age))
+                .from(member)
+                .fetch();
+
+        // then
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
+        }
+
+
+    }
+
+    @Test
+    @DisplayName("생성자로 Dto 조회")
+    void findDtoByConstructor() {
+        // given
+
+        // when
+        //! 생성자 방식은 인자에 필드 순서를 맞춰야 한다.
+        List<MemberDto> result = queryFactory
+                .select(Projections.constructor(MemberDto.class,
+                        member.username,
+                        member.age))
+                .from(member)
+                .fetch();
+
+        // then
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
+        }
+    }
+
+
+    @Test
+    @DisplayName("필드로 Dto 조회")
+    void findUserDto() {
+        // given
+        QMember memberSub = new QMember("memberSub");
+
+        // when
+        //! 필드 이름이 맞아야 하기 때문에 as로 alias를 사용
+        //? subQuery + as는 ExpressionUtils를 사용할 것
+        List<UserDto> result = queryFactory
+                .select(Projections.fields(UserDto.class,
+                        member.username.as("name"),
+                        ExpressionUtils.as(JPAExpressions
+                                .select(memberSub.age.max())
+                                .from(memberSub), "age")
+                ))
+                .from(member)
+                .fetch();
+
+        // then
+        for (UserDto userDto : result) {
+            System.out.println("userDto = " + userDto);
+        }
+    }
+
+    @Test
+    @DisplayName("생성자로 UserDto 조회")
+    void findUserDtoByConstructor() {
+
+        // when
+        List<UserDto> result = queryFactory
+                .select(Projections.constructor(UserDto.class,
+                        member.username,
+                        member.age))
+                .from(member)
+                .fetch();
+
+        // then
+        for (UserDto userDto : result) {
+            System.out.println("userDto = " + userDto);
         }
     }
 
