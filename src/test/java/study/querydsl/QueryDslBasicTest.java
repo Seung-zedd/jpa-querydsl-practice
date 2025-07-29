@@ -3,6 +3,7 @@ package study.querydsl;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
@@ -581,6 +582,41 @@ public class QueryDslBasicTest {
             Integer age = tuple.get(member.age);
             Integer rank = tuple.get(rankPath);
             log.info("username: {}, age: {}, rank: {}", username, age, rank);
+        }
+    }
+
+    @Test
+    @DisplayName("상수 테스트")
+    void constant() {
+        // given
+
+        // when
+        List<Tuple> result = queryFactory
+                .select(member.username, Expressions.constant("D"))
+                .from(member)
+                .fetch();
+
+        // then
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+        }
+    }
+
+    @Test
+    @DisplayName("상수, 문자 더하기 테스트")
+    void test() {
+        // given
+
+        // when
+        List<String> result = queryFactory
+                .select(member.username.concat("_").concat(member.age.stringValue()))
+                .from(member)
+                .where(member.username.eq("member1"))
+                .fetch();
+
+        // then
+        for (String s : result) {
+            System.out.println("s = " + s);
         }
     }
 
