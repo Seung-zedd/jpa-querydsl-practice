@@ -1,5 +1,6 @@
 package study.querydsl;
 
+import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.ExpressionUtils;
@@ -152,7 +153,7 @@ public class QueryDslBasicTest {
                 .fetchFirst();*/
 
         //! fetchResults()는 dialect에 따라 count 쿼리가 생성되지 않을 수도 있기 때문에 fetch()를 대신 사용할 것!
-        // especially those involving multiple GROUP BY clauses or HAVING clauses, where a proper count query cannot be reliably generated through standard JPA/JPQL mechanisms.
+        // Especially those involving multiple GROUP BY clauses or HAVING clauses, where a proper count query cannot be reliably generated through standard JPA/JPQL mechanisms.
         QueryResults<Member> results = queryFactory
                 .selectFrom(member)
                 .fetchResults();
@@ -792,6 +793,38 @@ public class QueryDslBasicTest {
         for (MemberDto memberDto : result) {
             System.out.println("memberDto = " + memberDto);
         }
+    }
+
+    @Test
+    @DisplayName("BooleanBuilder 테스트")
+    void dynamicQuery_BooleanBuilder() {
+        // given
+        String usernameParam = "member1";
+        Integer ageParam = null;
+
+        // when
+        List<Member> result = searchMember1(usernameParam, ageParam);
+
+        // then
+        assertThat(result.size()).isEqualTo(1);
+    }
+
+    private List<Member> searchMember1(String usernameCond, Integer ageCond) {
+
+        //* BooleanBuilder builder = new BooleanBuilder(member.username.eq(usernameCond));로 초기값을 설정할 수도 있음
+        BooleanBuilder builder = new BooleanBuilder();
+        if (usernameCond != null) {
+            builder.and(member.username.eq(usernameCond));
+        }
+
+        if (ageCond != null) {
+            builder.and(member.age.eq(ageCond));
+        }
+
+        return queryFactory
+                .selectFrom(member)
+                .where(builder)
+                .fetch();
     }
 
 
