@@ -5,6 +5,7 @@ import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.ExpressionUtils;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
@@ -766,7 +767,7 @@ public class QueryDslBasicTest {
 
     @Test
     @DisplayName("생성자로 UserDto 조회")
-    //! Projects.constructor는 런타임 시에 에러를 발견함!
+        //! Projects.constructor는 런타임 시에 에러를 발견함!
     void findUserDtoByConstructor() {
 
         // when
@@ -827,5 +828,36 @@ public class QueryDslBasicTest {
                 .fetch();
     }
 
+
+    //* 장점: 메서드를 다른 쿼리에서도 재활용할 수 있고 캡슐화를 할 수 있어서 코드 가독성 향상
+    @Test
+    @DisplayName("where 다중 파라미터 테스트")
+    void dynamicQuery_WhereParam() {
+        // given
+        String usernameParam = "member1";
+        Integer ageParam = 10;
+
+        // when
+        List<Member> result = searchMember2(usernameParam, ageParam);
+
+        // then
+        assertThat(result.size()).isEqualTo(1);
+    }
+
+    //* where 절은 아래와 같이 콤마로 여러 개의 메서드를 파라미터로 넘겨주는 것이 Best Practice
+    private List<Member> searchMember2(String usernameCond, Integer ageCond) {
+        return queryFactory
+                .selectFrom(member)
+                .where(usernameEq(usernameCond), ageEq(ageCond))
+                .fetch();
+    }
+
+    private BooleanExpression usernameEq(String usernameCond) {
+        return usernameCond != null ? member.username.eq(usernameCond) : null;
+    }
+
+    private BooleanExpression ageEq(Integer ageCond) {
+        return ageCond != null ? member.age.eq(ageCond) : null;
+    }
 
 }
