@@ -20,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.dto.MemberDto;
 import study.querydsl.dto.QMemberDto;
@@ -858,6 +859,79 @@ public class QueryDslBasicTest {
 
     private BooleanExpression ageEq(Integer ageCond) {
         return ageCond != null ? member.age.eq(ageCond) : null;
+    }
+
+    @Test
+    @Commit
+    @DisplayName("벌크 연산 테스트")
+    void bulkUpdate() {
+        // given
+
+
+        // when
+        //! bulk 연산(UPDATE, DELETE)은 영속성 컨텍스트를 무시하고 바로 DB로 쿼리를 때려버리는데, 영속성 컨텍스트(1차 캐시)와 DB의 상태가 다르면 1차 캐시를 먼저 조회하기 때문에 데이터 무결성이 깨짐!
+        //? 위의 과정을 repeatable read라고 한다.
+        long count = queryFactory
+                .update(member)
+                .set(member.username, "비회원")
+                .where(member.age.lt(28))
+                .execute();
+
+        //* 초기화로 해결 가능
+        //? 아래의 과정은 안전장치로서 세트로 사용하자.
+        em.flush(); // 혹시 모를 영속성 컨텍스트의 쓰기 지연 SQL을 DB에 반영
+        em.clear(); // 영속성 컨텍스트를 비워서 1차 캐시를 깨끗하게 만듦
+
+        // then
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .fetch();
+
+        //* 1차 캐시를 비웠기 때문에 반영된 DB로부터 조회해서 데이터 정합성이 일치됨
+        for (Member member1 : result) {
+            System.out.println("member1 = " + member1);
+        }
+    }
+
+    @Test
+    @DisplayName("bulk 덧셈 연산 테스트")
+    void bulkAdd() {
+        // given
+
+        // when
+        long count = queryFactory
+                .update(member)
+                .set(member.age, member.age.multiply(2))
+                .execute();
+
+        // then
+    }
+
+    @Test
+    @Commit
+    @DisplayName("bulk 제거 테스트")
+    void bulkDelete() {
+        // given
+
+        // when
+        long count = queryFactory
+                .delete(member)
+                .where(member.age.gt(18))
+                .execute();
+
+        //* DELETE도 마찬가지로 bulk 연산에 해당하기 때문에 아래의 과정 필수
+        em.flush();
+        em.clear();
+
+        // then
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .fetch();
+
+        //* 1차 캐시를 비웠기 때문에 반영된 DB로부터 조회해서 데이터 정합성이 일치됨
+        for (Member member1 : result) {
+            System.out.println("member1 = " + member1);
+        }
     }
 
 }
