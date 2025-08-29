@@ -1,6 +1,5 @@
 package study.querydsl.repository;
 
-import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.DisplayName;
@@ -15,30 +14,29 @@ import study.querydsl.entity.Team;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @Transactional
-class MemberJpaRepositoryTest {
+class MemberRepositoryTest {
 
     @Autowired
-    MemberJpaRepository memberJpaRepository;
-    @Autowired
     EntityManager em;
+
     @Autowired
-    JPAQueryFactory queryFactory;
+    MemberRepository memberRepository;
 
     @Test
     @DisplayName("기본 JPA 테스트")
     void basicTest() {
         // given
         Member member = new Member("member1", 10);
-        memberJpaRepository.save(member);
+        memberRepository.save(member);
 
         // when
-        Member findMember = memberJpaRepository.findById(member.getId()).orElseThrow(EntityNotFoundException::new);
-        List<Member> result1 = memberJpaRepository.findAllWithQuerydsl();
-        List<Member> result2 = memberJpaRepository.findByUsernameWithQuerydsl(("member1"));
+        Member findMember = memberRepository.findById(member.getId()).orElseThrow(EntityNotFoundException::new);
+        List<Member> result1 = memberRepository.findAll();
+        List<Member> result2 = memberRepository.findByUsername(("member1"));
 
         // then
         assertThat(findMember).isEqualTo(member);
@@ -50,7 +48,6 @@ class MemberJpaRepositoryTest {
     @DisplayName("inputYourTestName")
     void searchTest() {
         // given
-        queryFactory = new JPAQueryFactory(em);
         Team teamA = new Team("teamA");
         Team teamB = new Team("teamB");
 
@@ -73,7 +70,7 @@ class MemberJpaRepositoryTest {
         condition.setTeamName("teamB");
 
         // when
-        List<MemberTeamDto> result = memberJpaRepository.search(condition);
+        List<MemberTeamDto> result = memberRepository.search(condition);
 
 
         // then
